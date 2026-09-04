@@ -24,7 +24,7 @@ export default function LoginForm() {
 
     setPending(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password,
     });
@@ -43,7 +43,16 @@ export default function LoginForm() {
       return;
     }
 
-    window.location.assign("/admin");
+    if (!data.session) {
+      setMessage("Kh?ng th? l?u phi?n ??ng nh?p. Vui l?ng th? l?i.");
+      return;
+    }
+
+    const requestedNext = new URLSearchParams(window.location.search).get("next");
+    const next = requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/admin";
+    window.location.replace(next);
   }
 
   return <form className={styles.form} onSubmit={submit}>
