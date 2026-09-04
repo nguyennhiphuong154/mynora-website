@@ -1,0 +1,11 @@
+.sites-stage/
+.sites/
+build/*.tar.gz
+dist/
+.next/
+.wrangler/
+outputs/
+work/
+tsconfig.tsbuildinfo
+.codex-dev*.log
+.dev-admin*.log

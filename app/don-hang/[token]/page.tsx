@@ -1,0 +1,1 @@
+import { DraftNotice, Page } from "../../components/store-shell"; export default async function Order(){return <Page tone="transaction" eyebrow="ĐƠN HÀNG" title="Trạng thái đơn bánh" intro="Thông tin chi tiết đơn hàng chỉ hiển thị qua đường dẫn bảo mật này."><DraftNotice>Thông tin đơn sẽ xuất hiện khi hệ thống tra cứu đơn đã được MYNORA kích hoạt.</DraftNotice></Page>}
