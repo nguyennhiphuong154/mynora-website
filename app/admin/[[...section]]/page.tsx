@@ -105,7 +105,7 @@ export default async function Admin({
     <aside className={styles.sidebar}>
       <Link className={styles.brand} href="/admin"><span>MYNORA</span><small>ADMIN</small></Link>
       <nav>{sections.map((item) => <Link className={item.slug === current ? styles.active : ""} key={item.slug || "overview"} href={item.slug ? `/admin/${item.slug}` : "/admin"}><strong>{item.label}</strong><small>{item.note}</small></Link>)}</nav>
-      <div className={styles.account}><small>{adminUser.display_name ?? "Quản trị viên"}</small><span>{adminUser.email}</span><Link href="/admin/signout">Đăng xuất</Link></div>
+      <div className={styles.account}><small>{adminUser.display_name ?? "Quản trị viên"}</small><span>{adminUser.email}</span><form action="/admin/signout" method="post"><button className={styles.signoutButton} type="submit">Đăng xuất</button></form></div>
     </aside>
     <section className={styles.workspace}><header><div><p>MYNORA / {active.label.toUpperCase()}</p><h1>{active.label}</h1></div><div className={styles.readOnly}><span>●</span> Supabase đã kết nối</div></header>{content}</section>
   </main>;
