@@ -1,3 +1,4 @@
+import OrderRequests, { type OrderRecord } from "./order-requests";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { mynoraSiteSettings, publicOrderFaqs } from "../../data/site-data";
@@ -13,6 +14,7 @@ type AdminCategory = { id: number; slug: string; name: string; description: stri
 type AdminProduct = ProductRecord;
 
 const sections = [
+ { slug: "yeu-cau-dat-banh", label: "Yêu cầu đặt bánh", note: "Thông tin đơn và email" },
   { slug: "", label: "Tổng quan", note: "Tình trạng dữ liệu MYNORA" },
   { slug: "san-pham", label: "Sản phẩm", note: "Catalog và trạng thái mở bán" },
   { slug: "bai-viet", label: "Bài viết", note: "Nhật ký bếp và nội dung SEO" },
@@ -89,7 +91,9 @@ export default async function Admin({
   const posts = (postResult.data ?? []) as PostRecord[];
   const contacts = (contactResult.data ?? []) as ContactRecord[];
   const active = sections.find((item) => item.slug === current) ?? sections[0];
-  const content = current === "san-pham" ? <ProductManager initialProducts={products} categories={categories} editable />
+  const orderResult = current === "yeu-cau-dat-banh" ? await supabase.from("cake_order_requests").select("id,created_at,payload,items,status,cake_order_notifications(status,attempts,last_error)").order("created_at", { ascending: false }).limit(100) : null;
+  if (orderResult?.error) throw new Error("Không thể tải yêu cầu đặt bánh.");
+  const content = current === "yeu-cau-dat-banh" ? <OrderRequests orders={(orderResult?.data ?? []) as unknown as OrderRecord[]} /> : current === "san-pham" ? <ProductManager initialProducts={products} categories={categories} editable />
     : current === "bai-viet" ? <PostManager initialPosts={posts} editable adminEmail={adminUser.email} />
     : current === "lien-he" ? <ContactManager initialContacts={contacts} editable />
     : current === "danh-muc" ? <Categories categories={categories} products={products} />

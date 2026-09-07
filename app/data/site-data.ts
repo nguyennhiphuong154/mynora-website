@@ -80,7 +80,8 @@ export const publicOrderFaqs = [
   { question: "MYNORA có nhận bánh sinh nhật hoặc đơn số lượng lớn không?", answer: "Hiện MYNORA chưa nhận bánh sinh nhật, bánh sự kiện hoặc đơn số lượng lớn." },
 ] as const;
 
-export type CatalogProduct = Product & {
+export type CatalogProduct = {
+ slug: string; name: string; category: string; description: string; story: string; image: string; status: string; requirements: readonly string[];
   id: string;
   displayName: string;
   standardName: string;
@@ -191,3 +192,5 @@ export const guides = [
 ] as const;
 
 export const policies = ["dat-hang", "giao-hang", "doi-huy-hoan-tien", "quyen-rieng-tu", "dieu-khoan-su-dung"] as const;
+
+export const orderStatusLabels = { available: "Nhận yêu cầu đặt bánh", coming_soon: "Chưa mở bán", paused: "Tạm ngừng nhận", sold_out: "Tạm hết bánh" };

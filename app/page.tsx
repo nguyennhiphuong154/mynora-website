@@ -1,13 +1,16 @@
+import { getPublicCatalog } from "./lib/catalog";
+export const dynamic = "force-dynamic";
 /* eslint-disable @next/next/no-img-element -- Product photography is stored as local static assets. */
 import Link from "next/link";
 import { HomeNavigation } from "./components/home-navigation";
 import { HomeHeroSlider } from "./components/home-hero-slider";
 import { FeaturedCakesMarquee } from "./components/featured-cakes-marquee";
-import { homeProducts, mynoraSiteSettings } from "./lib/site-data";
+import { mynoraSiteSettings, orderStatusLabels } from "./lib/site-data";
 
 const marqueeCopy = "MADE TO ORDER • FRESHLY PREPARED • MYNORA BAKERY • ĐẶT TRƯỚC MỖI MẺ •";
 
-export default function Home() {
+export default async function Home() {
+ const homeProducts = await getPublicCatalog();
   const { order } = mynoraSiteSettings;
   return <main className="home-page">
     <HomeNavigation />
@@ -18,7 +21,7 @@ export default function Home() {
 
     <section id="menu" className="home-menu" aria-labelledby="menu-title">
       <div className="home-section-heading"><p className="home-section-label">BỘ SƯU TẬP MYNORA</p><h2 id="menu-title">Những mẻ bánh<br /><em>đang chờ bạn khám phá.</em></h2><Link href="/san-pham" className="home-all-link">Xem toàn bộ menu <span aria-hidden="true">↗</span></Link></div>
-      <div className="home-product-grid">{homeProducts.map((product, index) => <Link className={`home-product-card tone-${index % 4}`} href={`/san-pham/${product.slug}`} key={product.slug}><span className="product-index">0{index + 1}</span><div className="home-product-image"><img src={`/images/${product.image}`} alt={product.imageAlt} loading="lazy" /></div><div className="home-product-copy"><p>{product.name}</p><h3>{product.displayName}</h3><span className="product-status">Sắp mở bán</span><b>Xem chi tiết <i aria-hidden="true">↗</i></b></div></Link>)}</div>
+      <div className="home-product-grid">{homeProducts.map((product, index) => <Link className={`home-product-card tone-${index % 4}`} href={`/san-pham/${product.slug}`} key={product.slug}><span className="product-index">0{index + 1}</span><div className="home-product-image"><img src={product.media.card.src} alt={product.media.card.alt} loading="lazy" /></div><div className="home-product-copy"><p>{product.name}</p><h3>{product.displayName}</h3><span className="product-status">{orderStatusLabels[product.orderStatus]}</span><b>Xem chi tiết <i aria-hidden="true">↗</i></b></div></Link>)}</div>
       <p className="home-data-note">Giá, quy cách và lịch nhận bánh sẽ được MYNORA xác nhận trên từng sản phẩm trước khi mở nhận đơn.</p>
     </section>
 
