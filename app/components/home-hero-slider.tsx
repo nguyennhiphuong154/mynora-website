@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { homeHeroSlides } from "../lib/site-data";
 
-const SLIDE_DURATION = 2000;
+const SLIDE_DURATION = 5000;
 const TRANSITION_DURATION = 700;
 const SWIPE_THRESHOLD = 48;
 
@@ -14,6 +14,7 @@ export function HomeHeroSlider() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [outgoingIndex, setOutgoingIndex] = useState<number | null>(null);
   const [direction, setDirection] = useState<Direction>("forward");
+  const [paused, setPaused] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const activeIndexRef = useRef(0);
   const transitionTimerRef = useRef<number | undefined>(undefined);
@@ -47,10 +48,10 @@ export function HomeHeroSlider() {
   }, [activeIndex]);
 
   useEffect(() => {
-    if (isHidden) return;
+    if (isHidden || paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setTimeout(() => goTo(activeIndex + 1, "forward"), SLIDE_DURATION);
     return () => window.clearTimeout(timer);
-  }, [activeIndex, goTo, isHidden]);
+  }, [activeIndex, goTo, isHidden, paused]);
 
   useEffect(() => () => {
     window.clearTimeout(transitionTimerRef.current);
@@ -85,10 +86,11 @@ export function HomeHeroSlider() {
       <h1 id="home-title"><span>Một chút ngọt ngào,</span><span className="hero-title-accent">được làm riêng</span><span>cho bạn.</span></h1>
       <p className="hero-description">MYNORA chuẩn bị từng phần bánh theo lịch đặt trước để giữ được sự tươi mới và chỉn chu.</p>
       <div className="hero-actions-next"><Link className="hero-primary" href="/san-pham">Khám phá menu <span aria-hidden="true">↗</span></Link><Link className="hero-secondary" href="/dat-banh">Đặt bánh <span aria-hidden="true">↓</span></Link></div>
-      <p className="hero-slide-name" aria-live="polite">{activeSlide.name}</p>
+      <p className="hero-slide-name" aria-live={paused ? "polite" : "off"}>{activeSlide.name}</p>
     </div>
 
     <div className="hero-slider-controls" aria-label="Điều khiển bộ sưu tập bánh">
+      <button className="motion-toggle" type="button" aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? "Tiếp tục" : "Tạm dừng"}</button>
       <button type="button" className="hero-slider-arrow" aria-label="Xem bánh trước" onClick={() => goTo(activeIndex - 1, "backward")}><span aria-hidden="true">←</span></button>
       <div className="hero-slider-progress" role="tablist" aria-label="Chọn ảnh bánh">
         {homeHeroSlides.map((slide, index) => <button type="button" role="tab" aria-selected={index === activeIndex} aria-label={`Xem ${slide.name}`} className={index === activeIndex ? "is-active" : undefined} key={slide.id} onClick={() => goTo(index, index > activeIndex ? "forward" : "backward")} />)}

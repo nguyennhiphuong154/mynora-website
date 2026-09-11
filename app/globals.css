@@ -151,3 +151,11 @@ html,body{overflow-x:clip}
   .home-order-journey ol{border-bottom:0}
   .home-order-journey li{border-bottom:1px solid rgba(255,255,255,.35)}
 }
+
+/* Readable Vietnamese headings and compact-screen controls. */
+.home-section-heading h2,.story-copy-next h2,.journey-heading h2,.home-closing-cta h2,.inner-hero h1{line-height:1.06}.home-product-copy h3,.catalog-card-copy h2{line-height:1.15}.home-footer-links a,.store-footer-links a{overflow-wrap:anywhere}.motion-toggle{min-height:44px;padding:10px 14px;border:1px solid currentColor;border-radius:0;background:transparent;color:inherit;font:500 12px/1.5 "Be Vietnam Pro",sans-serif;cursor:pointer}.featured-cakes-heading .motion-toggle{margin-top:18px;color:#092d49}.hero-slider-controls .motion-toggle{color:#FFF7E6}
+@media(max-width:700px){.home-product-copy p,.product-status,.catalog-card-copy>p,.product-coming-soon,.catalog-card-link{font-size:11px}.catalog-filters button{min-height:44px;font-size:11px}.store-order-link{font-size:11px}.home-page .hero-slider-copy h1{line-height:1.04}.home-page .hero-slider-copy .hero-description{font-size:13px}.hero-slider-controls{gap:8px}.hero-slider-controls .motion-toggle{padding:6px;font-size:10px}}
+@media(prefers-reduced-motion:reduce){.home-marquee div{animation:none}.hero-slider-slide{animation:none!important;transition:none!important}}
+
+.hero-slider-controls .motion-toggle{background:#092d49;color:#FFF7E6}
+@media(max-width:700px){.home-page .hero-slider-controls{left:20px;right:20px;width:auto;display:grid;grid-template-columns:36px minmax(0,1fr) 36px;gap:8px}.hero-slider-controls>.motion-toggle{grid-column:1/-1;justify-self:end}.hero-slider-progress{justify-content:center;gap:4px}.hero-slider-progress button{width:12px}.hero-slider-progress button.is-active{width:24px}}

@@ -1,5 +1,3 @@
 import Link from "next/link";
-import { Page, ProductGrid } from "../components/store-shell";
-import { catalogProducts } from "../lib/site-data";
-
-export default function Cart() { return <Page tone="transaction" eyebrow="GIỎ HÀNG" title="Giỏ hàng đang chờ món ngọt đầu tiên." intro="Chưa có sản phẩm nào trong giỏ. Hãy chọn một món bánh để bắt đầu."><Link className="store-primary-action" href="/san-pham">Khám phá 8 món bánh <span aria-hidden="true">↗</span></Link><section className="related-products"><p className="inner-eyebrow">GỢI Ý CHO BẠN</p><h2>Khám phá một vài món bánh.</h2><ProductGrid items={catalogProducts.slice(0, 3)} /></section></Page>; }
+import { Page } from "../components/store-shell";
+export default function View() { return <Page tone="transaction" eyebrow="ĐẶT BÁNH" title="Chọn bánh trong một yêu cầu." intro="MYNORA nhận yêu cầu đặt bánh qua form. Bạn có thể chọn nhiều món và số lượng ngay trong form."><p className="support-note">Giá và lịch nhận được MYNORA xác nhận trước khi chốt đơn. Website hiện chưa hỗ trợ giỏ hàng và thanh toán trực tuyến.</p><Link className="store-primary-action" href="/dat-banh">Gửi yêu cầu đặt bánh ↗</Link></Page>; }

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- The marquee needs native product photography sizing. */
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { featuredCakes } from "../lib/site-data";
 
 const RAIL_SPEED_PX_PER_SECOND = 150;
@@ -24,18 +24,20 @@ function FeaturedCakeGroup({ duplicate = false }: { duplicate?: boolean }) {
 }
 
 export function FeaturedCakesMarquee() {
+  const [paused, setPaused] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     let frame = 0;
     let previousTime = 0;
     let offset = 0;
 
     const move = (time: number) => {
-      if (previousTime) {
+      if (previousTime && !paused && !reduced.matches && !track.matches(":hover, :focus-within")) {
         const elapsed = Math.min((time - previousTime) / 1000, 0.08);
         const loopWidth = track.scrollWidth / 2;
         if (loopWidth > 0) {
@@ -50,15 +52,16 @@ export function FeaturedCakesMarquee() {
 
     frame = window.requestAnimationFrame(move);
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [paused]);
 
   return <section id="banh-noi-bat" className="featured-cakes-section" aria-labelledby="featured-cakes-title">
     <div className="featured-cakes-heading">
       <p className="featured-cakes-label">BÁNH NỔI BẬT</p>
       <h2 id="featured-cakes-title">Những món bánh được yêu thích <em>tại MYNORA.</em></h2>
+      <button className="motion-toggle" type="button" aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? "Tiếp tục chuyển ảnh" : "Tạm dừng chuyển ảnh"}</button>
     </div>
     <div className="featured-cakes-viewport">
-      <div className="featured-cakes-track" ref={trackRef} data-motion="running">
+      <div className="featured-cakes-track" ref={trackRef} data-motion={paused ? "paused" : "running"}>
         <FeaturedCakeGroup />
         <FeaturedCakeGroup duplicate />
       </div>

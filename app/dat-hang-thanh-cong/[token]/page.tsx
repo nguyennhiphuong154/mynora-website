@@ -1,1 +1,3 @@
-import { DraftNotice, Page } from "../../components/store-shell"; export default async function Success(){return <Page tone="transaction" eyebrow="YÊU CẦU ĐẶT BÁNH" title="MYNORA đã nhận yêu cầu của bạn." intro="Thông tin đơn và hướng dẫn xác nhận sẽ được gửi theo kênh liên hệ bạn đã cung cấp."><DraftNotice>Trạng thái đơn chỉ được xác nhận sau khi MYNORA hoàn tất kiểm tra thông tin.</DraftNotice></Page>}
+import Link from "next/link";
+import { Page } from "../../components/store-shell";
+export default function Success(){return <Page tone="transaction" eyebrow="YÊU CẦU ĐẶT BÁNH" title="Kiểm tra yêu cầu đặt bánh." intro="Đường dẫn này không đủ để xác minh yêu cầu đã được tiếp nhận. Hãy kiểm tra thông báo thành công và mã yêu cầu hiển thị sau khi gửi form."><Link className="store-primary-action" href="/lien-he">Liên hệ MYNORA để kiểm tra ↗</Link></Page>}

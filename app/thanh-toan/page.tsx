@@ -1,4 +1,3 @@
 import Link from "next/link";
-import { DraftNotice, Page } from "../components/store-shell";
-
-export default function Checkout() { return <Page tone="transaction" eyebrow="THANH TOÁN" title="Hoàn tất thông tin đặt bánh." intro="MYNORA sẽ xác nhận giá, lịch nhận và phương thức thanh toán trước khi chốt đơn."><DraftNotice>Trang thanh toán sẽ mở khi quy cách, giá và lịch nhận bánh đã được MYNORA xác nhận cho từng sản phẩm.</DraftNotice><Link className="store-primary-action" href="/san-pham">Trở lại bộ sưu tập <span aria-hidden="true">↗</span></Link></Page>; }
+import { Page } from "../components/store-shell";
+export default function View() { return <Page tone="transaction" eyebrow="THANH TOÁN" title="Thanh toán sau khi xác nhận." intro="MYNORA sẽ xác nhận giá, lịch nhận và phương thức thanh toán trực tiếp với bạn trước khi chốt đơn."><p className="support-note">Website hiện tiếp nhận yêu cầu đặt bánh, chưa thu tiền trực tuyến. Gửi form thành công chưa đồng nghĩa với đơn đã được xác nhận.</p><Link className="store-primary-action" href="/dat-banh">Gửi yêu cầu đặt bánh ↗</Link></Page>; }
