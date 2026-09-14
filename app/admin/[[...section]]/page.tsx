@@ -1,4 +1,4 @@
-import OrderRequests, { type OrderRecord } from "./order-requests";
+import OrderRequests, { type OrderFilters, type OrderRecord, type OrderStatus } from "./order-requests";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { mynoraSiteSettings, publicOrderFaqs } from "../../data/site-data";
@@ -14,8 +14,8 @@ type AdminCategory = { id: number; slug: string; name: string; description: stri
 type AdminProduct = ProductRecord;
 
 const sections = [
- { slug: "yeu-cau-dat-banh", label: "Yêu cầu đặt bánh", note: "Thông tin đơn và email" },
   { slug: "", label: "Tổng quan", note: "Tình trạng dữ liệu MYNORA" },
+  { slug: "yeu-cau-dat-banh", label: "Yêu cầu đặt bánh", note: "Lịch sử và trạng thái xử lý" },
   { slug: "san-pham", label: "Sản phẩm", note: "Catalog và trạng thái mở bán" },
   { slug: "bai-viet", label: "Bài viết", note: "Nhật ký bếp và nội dung SEO" },
   { slug: "lien-he", label: "Khách liên hệ", note: "Yêu cầu và trạng thái xử lý" },
@@ -24,7 +24,7 @@ const sections = [
   { slug: "noi-dung", label: "Nội dung", note: "FAQ và nội dung hướng dẫn" },
 ] as const;
 
-function Overview({ products, categories, posts, contacts }: { products: AdminProduct[]; categories: AdminCategory[]; posts: PostRecord[]; contacts: ContactRecord[] }) {
+function Overview({ products, categories, posts, contacts, newOrdersToday, openOrders }: { products: AdminProduct[]; categories: AdminCategory[]; posts: PostRecord[]; contacts: ContactRecord[]; newOrdersToday: number; openOrders: number }) {
   const available = products.filter((product) => product.order_status === "available").length;
   const incomplete = products.filter((product) => product.content_status !== "verified").length;
   const published = posts.filter((post) => post.status === "published").length;
@@ -34,14 +34,14 @@ function Overview({ products, categories, posts, contacts }: { products: AdminPr
       <article><span>Sản phẩm</span><strong>{products.length}</strong><small>trong Supabase</small></article>
       <article><span>Bài đã xuất bản</span><strong>{published}</strong><small>trong Nhật ký bếp</small></article>
       <article><span>Liên hệ mới</span><strong>{newContacts}</strong><small>cần xử lý</small></article>
-      <article><span>Cần hoàn thiện</span><strong>{incomplete}</strong><small>hồ sơ sản phẩm</small></article>
+      <article><span>Yêu cầu mới hôm nay</span><strong>{newOrdersToday}</strong><small>{openOrders} yêu cầu đang chờ xử lý</small></article>
     </div>
     <section className={styles.panel}>
       <div className={styles.panelHeading}><div><p>TRẠNG THÁI DỮ LIỆU</p><h2>Dữ liệu đã nối với Supabase</h2></div><Link href="/admin/san-pham">Mở catalog →</Link></div>
       <div className={styles.priorityList}>
         <div><strong>Giá và quy cách</strong><span>Tiếp tục hoàn thiện thông tin cho từng sản phẩm.</span></div>
         <div><strong>Khả năng nhận đơn</strong><span>Chỉ bật mở bán sau khi xác nhận năng lực sản xuất.</span></div>
-        <div><strong>Nội dung & khách hàng</strong><span>{categories.length} danh mục · {available} món mở bán · {newContacts} liên hệ mới.</span></div>
+        <div><strong>Nội dung & khách hàng</strong><span>{categories.length} danh mục · {available} món mở bán · {incomplete} hồ sơ cần hoàn thiện · {newContacts} liên hệ mới.</span></div>
       </div>
     </section>
   </>;
@@ -64,9 +64,10 @@ function Content() {
 }
 
 export default async function Admin({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ section?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { section = [] } = await params;
   const current = section[0] ?? "";
@@ -91,20 +92,55 @@ export default async function Admin({
   const posts = (postResult.data ?? []) as PostRecord[];
   const contacts = (contactResult.data ?? []) as ContactRecord[];
   const active = sections.find((item) => item.slug === current) ?? sections[0];
-  const orderResult = current === "yeu-cau-dat-banh" ? await supabase.from("cake_order_requests").select("id,created_at,payload,items,status,cake_order_notifications(status,attempts,last_error)").order("created_at", { ascending: false }).limit(100) : null;
-  if (orderResult?.error) throw new Error("Không thể tải yêu cầu đặt bánh.");
-  const content = current === "yeu-cau-dat-banh" ? <OrderRequests orders={(orderResult?.data ?? []) as unknown as OrderRecord[]} /> : current === "san-pham" ? <ProductManager initialProducts={products} categories={categories} editable />
+  const raw = await searchParams;
+  const value = (key: string) => typeof raw[key] === "string" ? raw[key] as string : "";
+  const allowedStatuses: OrderStatus[] = ["new", "contacted", "confirmed", "completed", "cancelled"];
+  const filters: OrderFilters = {
+    query: value("q").trim().slice(0, 80),
+    status: allowedStatuses.includes(value("status") as OrderStatus) ? value("status") : "all",
+    period: ["today", "7d", "30d"].includes(value("period")) ? value("period") : "all",
+    sort: ["oldest", "receipt"].includes(value("sort")) ? value("sort") : "newest",
+  };
+  const page = Math.max(1, Number.parseInt(value("page") || "1", 10) || 1);
+  const startToday = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }) + "T00:00:00+07:00").toISOString();
+  const [newCountResult, newTodayResult, openResult] = await Promise.all([
+    supabase.from("cake_order_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+    current === "" ? supabase.from("cake_order_requests").select("id", { count: "exact", head: true }).eq("status", "new").gte("created_at", startToday) : Promise.resolve({ count: 0 }),
+    current === "" ? supabase.from("cake_order_requests").select("id", { count: "exact", head: true }).in("status", ["new", "contacted", "confirmed"]) : Promise.resolve({ count: 0 }),
+  ]);
+  let orderData: Array<Record<string, unknown>> = [];
+  let orderCount = 0;
+  if (current === "yeu-cau-dat-banh") {
+    let query = supabase.from("cake_order_requests").select("id,request_code,created_at,updated_at,payload,items,status,admin_note,cake_order_notifications(status,attempts,last_error),cake_order_request_events(id,event_type,from_status,to_status,created_at)", { count: "exact" });
+    if (filters.query) {
+      const safe = filters.query.replace(/[%_,.()"']/g, " ").trim();
+      if (safe) query = query.or(`request_code.ilike.%${safe}%,customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%`);
+    }
+    if (filters.status !== "all") query = query.eq("status", filters.status);
+    if (filters.period !== "all") {
+      const days = filters.period === "today" ? 0 : filters.period === "7d" ? 7 : 30;
+      const since = days === 0 ? startToday : new Date(new Date(startToday).getTime() - (days - 1) * 86400000).toISOString();
+      query = query.gte("created_at", since);
+    }
+    query = filters.sort === "receipt" ? query.order("requested_date", { ascending: true }) : query.order("created_at", { ascending: filters.sort === "oldest" });
+    const result = await query.range((page - 1) * 20, page * 20 - 1);
+    if (result.error) throw new Error("Không thể tải yêu cầu đặt bánh.");
+    orderData = (result.data ?? []) as Array<Record<string, unknown>>;
+    orderCount = result.count ?? 0;
+  }
+  const preparedOrders = orderData.map(order => ({ ...order, events: order.cake_order_request_events ?? [] })) as unknown as OrderRecord[];
+  const content = current === "yeu-cau-dat-banh" ? <OrderRequests initialOrders={preparedOrders} total={orderCount} page={page} filters={filters} newCount={newCountResult.count ?? 0} /> : current === "san-pham" ? <ProductManager initialProducts={products} categories={categories} editable />
     : current === "bai-viet" ? <PostManager initialPosts={posts} editable adminEmail={adminUser.email} />
     : current === "lien-he" ? <ContactManager initialContacts={contacts} editable />
     : current === "danh-muc" ? <Categories categories={categories} products={products} />
     : current === "van-hanh" ? <Operations />
     : current === "noi-dung" ? <Content />
-    : <Overview products={products} categories={categories} posts={posts} contacts={contacts} />;
+    : <Overview products={products} categories={categories} posts={posts} contacts={contacts} newOrdersToday={newTodayResult.count ?? 0} openOrders={openResult.count ?? 0} />;
 
   return <main className={styles.shell}>
     <aside className={styles.sidebar}>
       <Link className={styles.brand} href="/admin"><span>MYNORA</span><small>ADMIN</small></Link>
-      <nav>{sections.map((item) => <Link className={item.slug === current ? styles.active : ""} key={item.slug || "overview"} href={item.slug ? `/admin/${item.slug}` : "/admin"}><strong>{item.label}</strong><small>{item.note}</small></Link>)}</nav>
+      <nav>{sections.map((item) => <Link className={item.slug === current ? styles.active : ""} key={item.slug || "overview"} href={item.slug ? `/admin/${item.slug}` : "/admin"}><strong>{item.label}{item.slug === "yeu-cau-dat-banh" && (newCountResult.count ?? 0) > 0 ? <span className={styles.navBadge}>{newCountResult.count}</span> : null}</strong><small>{item.note}</small></Link>)}</nav>
       <div className={styles.account}><small>{adminUser.display_name ?? "Quản trị viên"}</small><span>{adminUser.email}</span><form action="/admin/signout" method="post"><button className={styles.signoutButton} type="submit">Đăng xuất</button></form></div>
     </aside>
     <section className={styles.workspace}><header><div><p>MYNORA / {active.label.toUpperCase()}</p><h1>{active.label}</h1></div><div className={styles.readOnly}><span>●</span> Supabase đã kết nối</div></header>{content}</section>

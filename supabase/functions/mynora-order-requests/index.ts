@@ -10,7 +10,7 @@ async function notify(id: string) {
   const { data: claimed, error: claimError } = await db.rpc("claim_cake_notification", { p_id: id });
   if (claimError || !claimed) return;
   try {
-    const { data: order, error } = await db.from("cake_order_requests").select("id,created_at,payload,items").eq("id", id).single();
+    const { data: order, error } = await db.from("cake_order_requests").select("id,request_code,created_at,payload,items").eq("id", id).single();
     if (error || !order) throw new Error("ORDER_READ_FAILED");
     await provider.send(order as SavedOrder);
     const { error: updateError } = await db.from("cake_order_notifications").update({ status: "sent", sent_at: new Date().toISOString(), last_error: null, locked_until: null }).eq("order_id", id);
@@ -56,8 +56,9 @@ Deno.serve(async request => {
       return json({ message: "Chưa thể lưu yêu cầu. Vui lòng thử lại." }, 503);
     }
     // Persisted before notification. Email failure never changes the saved response.
+    const { data: saved } = await db.from("cake_order_requests").select("request_code").eq("id", id).single();
     await notify(String(id));
-    return json({ requestId: `MYN-${id}`, status: "pending" }, 201);
+    return json({ requestId: saved?.request_code ?? `MYN-${id}`, status: "new" }, 201);
   } catch {
     return json({ message: "Chưa thể gửi yêu cầu. Vui lòng thử lại." }, 503);
   }
