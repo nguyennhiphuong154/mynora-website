@@ -44,7 +44,7 @@ export default function LoginForm() {
     }
 
     if (!data.session) {
-      setMessage("Kh?ng th? l?u phi?n ??ng nh?p. Vui l?ng th? l?i.");
+      setMessage("Không thể lưu phiên đăng nhập. Vui lòng thử lại.");
       return;
     }
 
