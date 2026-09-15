@@ -8,7 +8,7 @@ import styles from "./contact-form.module.css";
 const initial: OrderInput = { customerName: "", phone: "", preferredContactChannel: "phone", items: [{ productId: "", quantity: 1 }], requestedDate: "", requestedTimeSlot: "", fulfillmentType: "pickup", deliveryAddress: "", differentRecipient: false, recipientName: "", recipientPhone: "", note: "", consent: false, website: "" };
 const statusLabels = { available: "", sold_out: " — Tạm hết bánh", paused: " — Tạm ngừng nhận", coming_soon: " — Chưa mở bán" };
 
-export default function ContactForm({ products, facebookUrl, instagramUrl }: { products: CatalogProduct[]; facebookUrl?: string; instagramUrl?: string }) {
+export default function ContactForm({ products, minimumLeadTimeDays = 5, facebookUrl, instagramUrl }: { products: CatalogProduct[]; minimumLeadTimeDays?: number; facebookUrl?: string; instagramUrl?: string }) {
   const [form, setForm] = useState<OrderInput>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -28,7 +28,7 @@ export default function ContactForm({ products, facebookUrl, instagramUrl }: { p
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy.current) return;
-    const result = validateOrder(form);
+    const result = validateOrder(form, minimumDate(new Date(), minimumLeadTimeDays), minimumLeadTimeDays);
     if (!result.data) { showErrors(result.errors); return; }
     const invalid = form.items.find(i => !products.some(p => p.id === i.productId && p.orderStatus === "available"));
     if (invalid) { showErrors({ items: "Vui lòng chọn món đang nhận yêu cầu." }); return; }
@@ -50,7 +50,7 @@ export default function ContactForm({ products, facebookUrl, instagramUrl }: { p
   }
   if (requestId) return <section className={`${styles.wrap} ${styles.success}`} role="status"><p className={styles.eyebrow}>MYNORA ĐÃ TIẾP NHẬN</p><h2>Yêu cầu của bạn đã được gửi</h2><p>Yêu cầu đặt bánh — chờ MYNORA xác nhận.</p><p>Chúng mình sẽ liên hệ lại để xác nhận bánh, thời gian nhận và các thông tin cần thiết.</p><p className={styles.reference}>Mã yêu cầu: {requestId}</p><button type="button" onClick={() => { setForm(initial); setRequestId(""); submission.current = null; }}>Gửi yêu cầu khác</button></section>;
   return <section className={styles.wrap} id="yeu-cau-dat-banh" aria-labelledby="order-title">
-    <aside className={styles.heading}><p className={styles.eyebrow}>MỘT CHÚT NGỌT, CHUẨN BỊ RIÊNG CHO BẠN</p><h2 id="order-title">Chiếc bánh bạn mong chờ.</h2><p>Chọn món và để lại lời hẹn. MYNORA sẽ liên hệ để cùng bạn xác nhận từng chi tiết.</p><div className={styles.before}><h3>Trước khi gửi yêu cầu.</h3><nav aria-label="Mạng xã hội MYNORA">{instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer">Instagram ↗</a>}{facebookUrl && <a href={facebookUrl} target="_blank" rel="noopener noreferrer">Facebook ↗</a>}</nav><p>Đặt trước ít nhất 5 ngày. Ngày và khung giờ bạn chọn là mong muốn; MYNORA sẽ xác nhận theo lịch làm bánh.</p><p>Hiện MYNORA chưa nhận bánh sinh nhật, bánh sự kiện hoặc đơn số lượng lớn.</p></div></aside>
+    <aside className={styles.heading}><p className={styles.eyebrow}>MỘT CHÚT NGỌT, CHUẨN BỊ RIÊNG CHO BẠN</p><h2 id="order-title">Chiếc bánh bạn mong chờ.</h2><p>Chọn món và để lại lời hẹn. MYNORA sẽ liên hệ để cùng bạn xác nhận từng chi tiết.</p><div className={styles.before}><h3>Trước khi gửi yêu cầu.</h3><nav aria-label="Mạng xã hội MYNORA">{instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer">Instagram ↗</a>}{facebookUrl && <a href={facebookUrl} target="_blank" rel="noopener noreferrer">Facebook ↗</a>}</nav><p>Đặt trước ít nhất {minimumLeadTimeDays} ngày. Ngày và khung giờ bạn chọn là mong muốn; MYNORA sẽ xác nhận theo lịch làm bánh.</p><p>Hiện MYNORA chưa nhận bánh sinh nhật, bánh sự kiện hoặc đơn số lượng lớn.</p></div></aside>
     <form className={styles.form} ref={formRef} onSubmit={submit} noValidate aria-busy={saving}>
       <fieldset disabled={saving}><legend><span>01</span> Thông tin của bạn</legend><div className={styles.grid}>
         {field("customerName", "Họ và tên *", <input {...attrs("customerName")} value={form.customerName} onChange={e => set("customerName", e.target.value)} autoComplete="name" placeholder="Nguyễn Văn A" required maxLength={120} />)}
@@ -68,7 +68,7 @@ export default function ContactForm({ products, facebookUrl, instagramUrl }: { p
         <button className={styles.add} type="button" disabled={form.items.length >= Math.min(20, products.filter(p => p.orderStatus === "available").length)} onClick={() => set("items", [...form.items, { productId: "", quantity: 1 }])}>＋ Thêm món bánh</button>
       </fieldset>
       <fieldset disabled={saving}><legend><span>03</span> Lời hẹn nhận bánh</legend><div className={styles.grid}>
-        {field("requestedDate", "Ngày muốn nhận *", <input {...attrs("requestedDate")} type="date" min={minimumDate()} required value={form.requestedDate} onChange={e => set("requestedDate", e.target.value)} />)}
+        {field("requestedDate", "Ngày muốn nhận *", <input {...attrs("requestedDate")} type="date" min={minimumDate(new Date(), minimumLeadTimeDays)} required value={form.requestedDate} onChange={e => set("requestedDate", e.target.value)} />)}
         {field("requestedTimeSlot", "Khung giờ mong muốn *", <input {...attrs("requestedTimeSlot")} value={form.requestedTimeSlot} onChange={e => set("requestedTimeSlot", e.target.value)} placeholder="Ví dụ: 14:00–16:00" maxLength={120} required />)}
         {field("fulfillmentType", "Hình thức nhận bánh", <select {...attrs("fulfillmentType")} value={form.fulfillmentType} onChange={e => set("fulfillmentType", e.target.value)}><option value="pickup">Tự đến nhận</option><option value="delivery">Giao hàng</option></select>, true)}
         {form.fulfillmentType === "delivery" && field("deliveryAddress", "Địa chỉ giao bánh tại Đà Nẵng *", <textarea {...attrs("deliveryAddress")} value={form.deliveryAddress} onChange={e => set("deliveryAddress", e.target.value)} autoComplete="street-address" maxLength={500} rows={3} required />, true)}

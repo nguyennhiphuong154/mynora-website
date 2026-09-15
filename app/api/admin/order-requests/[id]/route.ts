@@ -1,13 +1,12 @@
+import { getAdminContext } from "../../../../../lib/supabase/admin";
 import { createClient } from "../../../../../lib/supabase/server";
 
 const statuses = ["new", "contacted", "confirmed", "completed", "cancelled"] as const;
 type Status = typeof statuses[number];
 
 async function authorizedClient() {
-  const db = await createClient();
-  const { data: auth } = await db.auth.getUser();
-  if (!auth.user?.email) return { response: Response.json({ message: "Vui lòng đăng nhập." }, { status: 401 }) };
-  const { data: admin } = await db.from("admin_users").select("id").eq("email", auth.user.email).eq("is_active", true).maybeSingle();
+  const { db, user, admin } = await getAdminContext();
+  if (!user) return { response: Response.json({ message: "Vui lòng đăng nhập." }, { status: 401 }) };
   if (!admin) return { response: Response.json({ message: "Bạn không có quyền quản trị." }, { status: 403 }) };
   return { db };
 }

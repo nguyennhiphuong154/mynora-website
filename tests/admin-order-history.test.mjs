@@ -8,6 +8,7 @@ const defaultMigration = read("../supabase/migrations/20260914150000_default_new
 const page = read("../app/admin/[[...section]]/page.tsx");
 const manager = read("../app/admin/[[...section]]/order-requests.tsx");
 const api = read("../app/api/admin/order-requests/[id]/route.ts");
+const adminAuth = read("../lib/supabase/admin.ts");
 const edge = read("../supabase/functions/mynora-order-requests/index.ts");
 
 test("order history schema preserves snapshots and records workflow changes", () => {
@@ -28,8 +29,9 @@ test("admin list searches, filters and paginates on the server", () => {
 });
 
 test("admin API requires a real admin and limits editable fields", () => {
-  assert.match(api, /db\.auth\.getUser\(\)/);
-  assert.match(api, /from\("admin_users"\)/);
+  assert.match(api, /getAdminContext\(\)/);
+  assert.match(adminAuth, /db\.auth\.getUser\(\)/);
+  assert.match(adminAuth, /from\("admin_users"\)/);
   assert.match(api, /new URL\(origin\)\.host !== new URL\(request\.url\)\.host/);
   assert.match(api, /update\(updates\)/);
   assert.doesNotMatch(api, /service_role/i);

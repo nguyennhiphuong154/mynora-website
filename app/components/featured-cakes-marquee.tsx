@@ -3,27 +3,28 @@
 /* eslint-disable @next/next/no-img-element -- The marquee needs native product photography sizing. */
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { featuredCakes } from "../lib/site-data";
+import type { CatalogProduct } from "../lib/site-data";
 
 const RAIL_SPEED_PX_PER_SECOND = 150;
 
-function FeaturedCakeGroup({ duplicate = false }: { duplicate?: boolean }) {
+function FeaturedCakeGroup({ cakes, duplicate = false }: { cakes: CatalogProduct[]; duplicate?: boolean }) {
   return <div className="featured-cakes-group" aria-hidden={duplicate || undefined}>
-    {featuredCakes.map((cake) => duplicate ? (
+    {cakes.map((cake) => duplicate ? (
       <div className="featured-cake" key={cake.id}>
-        <div className="featured-cake-image"><img src={cake.image} alt="" /></div>
-        <p>{cake.name}</p>
+        <div className="featured-cake-image"><img src={cake.media.card.src} alt="" /></div>
+        <p>{cake.displayName}</p>
       </div>
     ) : (
-      <Link className="featured-cake" href={cake.href} key={cake.id}>
-        <div className="featured-cake-image"><img src={cake.image} alt={cake.alt} /></div>
-        <p>{cake.name}</p>
+      <Link className="featured-cake" href={`/san-pham/${cake.slug}`} key={cake.id}>
+        <div className="featured-cake-image"><img src={cake.media.card.src} alt={cake.media.card.alt} /></div>
+        <p>{cake.displayName}</p>
       </Link>
     ))}
   </div>;
 }
 
-export function FeaturedCakesMarquee() {
+export function FeaturedCakesMarquee({ products }: { products: CatalogProduct[] }) {
+  const featuredCakes = products.filter(product => product.isFeatured && product.orderStatus !== "paused");
   const [paused, setPaused] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -62,8 +63,8 @@ export function FeaturedCakesMarquee() {
     </div>
     <div className="featured-cakes-viewport">
       <div className="featured-cakes-track" ref={trackRef} data-motion={paused ? "paused" : "running"}>
-        <FeaturedCakeGroup />
-        <FeaturedCakeGroup duplicate />
+        <FeaturedCakeGroup cakes={featuredCakes} />
+        <FeaturedCakeGroup cakes={featuredCakes} duplicate />
       </div>
     </div>
   </section>;

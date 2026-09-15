@@ -1,18 +1,17 @@
-import { getPublicCatalog } from "../../lib/catalog";
+import { getPublicCatalog, getPublicCategories } from "../../lib/catalog";
 export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Page, ProductGrid } from "../../components/store-shell";
-import { categories } from "../../lib/site-data";
 
 type CategoryPageProps = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> { const { slug } = await params; const category = categories.find((item) => item.slug === slug); return category ? { title: `${category.name} | MYNORA Bakery`, description: category.description, robots: { index: false, follow: true } } : {}; }
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> { const { slug } = await params; const category = (await getPublicCategories()).find((item) => item.slug === slug); return category ? { title: `${category.name} | MYNORA Bakery`, description: category.description, robots: { index: false, follow: true } } : {}; }
 
 export default async function Category({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const category = categories.find((item) => item.slug === slug);
+  const category = (await getPublicCategories()).find((item) => item.slug === slug);
   if (!category) notFound();
   const items = (await getPublicCatalog()).filter((product) => product.category === slug);
   return <Page eyebrow="DANH MỤC" title={category.name} intro={category.description}>

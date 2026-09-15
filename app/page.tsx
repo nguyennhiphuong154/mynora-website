@@ -1,21 +1,21 @@
-import { getPublicCatalog } from "./lib/catalog";
+import { getPublicCatalog, getPublicSiteSettings } from "./lib/catalog";
 export const dynamic = "force-dynamic";
 /* eslint-disable @next/next/no-img-element -- Product photography is stored as local static assets. */
 import Link from "next/link";
 import { HomeNavigation } from "./components/home-navigation";
 import { HomeHeroSlider } from "./components/home-hero-slider";
 import { FeaturedCakesMarquee } from "./components/featured-cakes-marquee";
-import { mynoraSiteSettings, orderStatusLabels } from "./lib/site-data";
+import { orderStatusLabels } from "./lib/site-data";
 
 const marqueeCopy = "MADE TO ORDER • FRESHLY PREPARED • MYNORA BAKERY • ĐẶT TRƯỚC MỖI MẺ •";
 
 export default async function Home() {
- const homeProducts = await getPublicCatalog();
-  const { order } = mynoraSiteSettings;
+ const [homeProducts, siteSettings] = await Promise.all([getPublicCatalog(), getPublicSiteSettings()]);
+  const { order } = siteSettings;
   return <main className="home-page">
     <HomeNavigation />
-    <HomeHeroSlider />
-    <FeaturedCakesMarquee />
+    <HomeHeroSlider products={homeProducts} />
+    <FeaturedCakesMarquee products={homeProducts} />
 
     <div className="home-marquee" aria-label="MYNORA Bakery làm bánh theo đơn"><div>{marqueeCopy}&nbsp; {marqueeCopy}&nbsp; {marqueeCopy}&nbsp;</div></div>
 

@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
-import { validateOrder, type SavedOrder } from "../_shared/order.ts";
+import { minimumDate, validateOrder, type SavedOrder } from "../_shared/order.ts";
 import { resendProvider } from "../_shared/notification.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -45,7 +45,10 @@ Deno.serve(async request => {
     if (raw.length > 16000) return json({ message: "Yêu cầu quá dài." }, 413);
     let value: unknown;
     try { value = JSON.parse(raw); } catch { return json({ message: "Dữ liệu không hợp lệ." }, 400); }
-    const { data, errors } = validateOrder(value);
+    const { data: orderSetting } = await db.from("site_settings").select("value").eq("key", "order").maybeSingle();
+    const configuredLeadDays = Number(orderSetting?.value?.minimumPreorderDays);
+    const leadDays = Number.isInteger(configuredLeadDays) && configuredLeadDays >= 0 && configuredLeadDays <= 90 ? configuredLeadDays : 5;
+    const { data, errors } = validateOrder(value, minimumDate(new Date(), leadDays), leadDays);
     if (!data) return json({ errors }, 422);
     const { data: id, error } = await db.rpc("submit_cake_order", { p_key: key, p_payload: data });
     if (error) {

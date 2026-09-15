@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { homeHeroSlides } from "../lib/site-data";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CatalogProduct } from "../lib/site-data";
+
+type HeroSlideData = { id: string; name: string; alt: string; href: string; desktopImage: string; mobileImage: string };
 
 const SLIDE_DURATION = 5000;
 const TRANSITION_DURATION = 700;
@@ -10,7 +12,8 @@ const SWIPE_THRESHOLD = 48;
 
 type Direction = "forward" | "backward";
 
-export function HomeHeroSlider() {
+export function HomeHeroSlider({ products }: { products: CatalogProduct[] }) {
+  const homeHeroSlides: HeroSlideData[] = useMemo(() => products.map(product => ({ id: product.id, name: product.displayName, alt: product.media.card.alt, href: `/san-pham/${product.slug}`, desktopImage: `/images/hero/${product.slug}-hero.png`, mobileImage: `/images/hero/${product.slug}-hero-mobile.png` })), [products]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [outgoingIndex, setOutgoingIndex] = useState<number | null>(null);
   const [direction, setDirection] = useState<Direction>("forward");
@@ -32,7 +35,7 @@ export function HomeHeroSlider() {
     setActiveIndex(nextIndex);
     transitionTimerRef.current = window.setTimeout(() => setOutgoingIndex(null), TRANSITION_DURATION);
 
-  }, []);
+  }, [homeHeroSlides.length]);
 
   useEffect(() => {
     const updateVisibility = () => setIsHidden(document.hidden);
@@ -43,9 +46,10 @@ export function HomeHeroSlider() {
 
   useEffect(() => {
     const upcoming = homeHeroSlides[(activeIndex + 1) % homeHeroSlides.length];
+    if (!upcoming) return;
     const image = new Image();
     image.src = upcoming.desktopImage;
-  }, [activeIndex]);
+  }, [activeIndex, homeHeroSlides]);
 
   useEffect(() => {
     if (isHidden || paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -59,6 +63,8 @@ export function HomeHeroSlider() {
 
   const activeSlide = homeHeroSlides[activeIndex];
   const outgoingSlide = outgoingIndex === null ? null : homeHeroSlides[outgoingIndex];
+
+  if (!activeSlide) return <section className="home-hero home-hero-slider" aria-labelledby="home-title"><div className="hero-copy-next hero-slider-copy"><p className="hero-kicker">BÁNH LÀM MỚI THEO ĐƠN</p><h1 id="home-title"><span>Menu đang được</span><span className="hero-title-accent">MYNORA chuẩn bị.</span></h1></div></section>;
 
   return <section
     className="home-hero home-hero-slider"
@@ -101,7 +107,7 @@ export function HomeHeroSlider() {
   </section>;
 }
 
-function HeroSlide({ slide, state, priority = false }: { slide: typeof homeHeroSlides[number]; state: "active" | "outgoing"; priority?: boolean }) {
+function HeroSlide({ slide, state, priority = false }: { slide: HeroSlideData; state: "active" | "outgoing"; priority?: boolean }) {
   return <Link className={`hero-slider-slide hero-slider-slide--${state}`} href={slide.href} aria-label={`Xem ${slide.name}`}>
     <picture>
       <source media="(max-width: 700px)" srcSet={slide.mobileImage} />

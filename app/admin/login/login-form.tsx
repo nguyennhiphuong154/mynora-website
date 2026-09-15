@@ -4,10 +4,8 @@ import { FormEvent, useState } from "react";
 import { createClient } from "../../../lib/supabase/client";
 import styles from "./login.module.css";
 
-const ADMIN_EMAIL = "nguyennhiphuong154@gmail.com";
-
 export default function LoginForm() {
-  const [email, setEmail] = useState(ADMIN_EMAIL);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
@@ -17,11 +15,6 @@ export default function LoginForm() {
     setMessage("");
 
     const normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail !== ADMIN_EMAIL) {
-      setMessage("Email này chưa được cấp quyền quản trị.");
-      return;
-    }
-
     setPending(true);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({

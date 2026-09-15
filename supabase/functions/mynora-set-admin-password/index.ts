@@ -3,7 +3,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
 const allowedOrigins = new Set([
   "http://localhost:3000",
+  "https://mynorabakery.com",
+  "https://www.mynorabakery.com",
   "https://mynora-bakery.nguyennhiphuong154.chatgpt.site",
+  ...(Deno.env.get("MYNORA_ALLOWED_ORIGINS") ?? "").split(",").map(value => value.trim()).filter(Boolean),
 ]);
 
 function response(req: Request, body: Record<string, unknown>, status = 200) {

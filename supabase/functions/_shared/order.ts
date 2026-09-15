@@ -11,7 +11,7 @@ export function minimumDate(now = new Date(), leadDays = 5) {
   return local.toISOString().slice(0, 10);
 }
 const phoneValid = (s: string) => /^(0[35789]\d{8}|\+84[35789]\d{8})$/.test(s.replace(/[\s().-]/g, ""));
-export function validateOrder(value: unknown, minDate = minimumDate()): { data?: OrderInput; errors: Record<string, string> } {
+export function validateOrder(value: unknown, minDate = minimumDate(), leadDays = 5): { data?: OrderInput; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
   const v = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const str = (key: string) => typeof v[key] === "string" ? (v[key] as string).trim() : "";
@@ -35,7 +35,7 @@ export function validateOrder(value: unknown, minDate = minimumDate()): { data?:
       seen.add(String(row.productId)); data.items.push({ productId: String(row.productId ?? ""), quantity: Number(row.quantity) });
     });
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.requestedDate) || !Number.isFinite(Date.parse(data.requestedDate)) || new Date(data.requestedDate).toISOString().slice(0, 10) !== data.requestedDate || data.requestedDate < minDate) errors.requestedDate = "Vui lòng chọn ngày nhận cách hôm nay ít nhất 5 ngày.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.requestedDate) || !Number.isFinite(Date.parse(data.requestedDate)) || new Date(data.requestedDate).toISOString().slice(0, 10) !== data.requestedDate || data.requestedDate < minDate) errors.requestedDate = `Vui lòng chọn ngày nhận cách hôm nay ít nhất ${leadDays} ngày.`;
   if (!data.requestedTimeSlot || data.requestedTimeSlot.length > 120) errors.requestedTimeSlot = "Vui lòng nhập khung giờ mong muốn (tối đa 120 ký tự).";
   if (!["delivery", "pickup"].includes(data.fulfillmentType)) errors.fulfillmentType = "Vui lòng chọn hình thức nhận bánh.";
   if (data.fulfillmentType === "delivery" && (data.deliveryAddress.length < 5 || data.deliveryAddress.length > 500)) errors.deliveryAddress = "Vui lòng nhập địa chỉ giao bánh đầy đủ (5–500 ký tự).";

@@ -2,15 +2,17 @@ import OrderRequests, { type OrderFilters, type OrderRecord, type OrderStatus } 
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { mynoraSiteSettings, publicOrderFaqs } from "../../data/site-data";
-import { createClient } from "../../../lib/supabase/server";
+import { getAdminContext } from "../../../lib/supabase/admin";
 import ProductManager, { type ProductRecord } from "./product-manager";
+import CategoryManager, { type CategoryRecord } from "./category-manager";
 import PostManager, { type PostRecord } from "./post-manager";
 import ContactManager, { type ContactRecord } from "./contact-manager";
+import OperationsManager, { type OperationsSettings } from "./operations-manager";
 import styles from "./admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-type AdminCategory = { id: number; slug: string; name: string; description: string; sort_order: number; is_active: boolean };
+type AdminCategory = CategoryRecord;
 type AdminProduct = ProductRecord;
 
 const sections = [
@@ -47,18 +49,6 @@ function Overview({ products, categories, posts, contacts, newOrdersToday, openO
   </>;
 }
 
-function Categories({ categories, products }: { categories: AdminCategory[]; products: AdminProduct[] }) {
-  return <div className={styles.categoryGrid}>{categories.map((category) => <article key={category.id}>
-    <span>{products.filter((product) => product.category_id === category.id).length} món</span><h2>{category.name}</h2><p>{category.description}</p><small>{category.slug}</small>
-  </article>)}</div>;
-}
-
-function Operations() {
-  const { contact, order, delivery } = mynoraSiteSettings;
-  const rows = [["Điện thoại", contact.phone], ["Email", contact.email], ["Giờ tiếp nhận", contact.contactHours], ["Đặt trước tối thiểu", `${order.minimumLeadTimeDays} ngày`], ["Phản hồi dự kiến", `${order.expectedReplyMinutes} phút`], ["Khu vực giao", delivery.areaLabel], ["Bán kính miễn phí", `${delivery.freeRadiusKm} km`], ["Phí ngoài bán kính", `${delivery.feeOutsideFreeRadiusVnd.toLocaleString("vi-VN")}đ`]];
-  return <section className={styles.panel}><div className={styles.panelHeading}><div><p>VẬN HÀNH</p><h2>Cấu hình đang công khai</h2></div></div><dl className={styles.definitionList}>{rows.map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></section>;
-}
-
 function Content() {
   return <section className={styles.panel}><div className={styles.panelHeading}><div><p>NỘI DUNG</p><h2>{publicOrderFaqs.length} câu hỏi thường gặp</h2></div></div><div className={styles.faqList}>{publicOrderFaqs.map((faq, index) => <article key={faq.question}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{faq.question}</h3><p>{faq.answer}</p></div></article>)}</div></section>;
 }
@@ -71,26 +61,25 @@ export default async function Admin({
 }) {
   const { section = [] } = await params;
   const current = section[0] ?? "";
-  const supabase = await createClient();
-  const { data: claimData } = await supabase.auth.getClaims();
-  const email = typeof claimData?.claims?.email === "string" ? claimData.claims.email : null;
-  if (!email) redirect(`/admin/login?next=${encodeURIComponent(current ? `/admin/${current}` : "/admin")}`);
-
-  const adminUser = (await supabase.from("admin_users").select("email, display_name").eq("email", email).eq("is_active", true).maybeSingle()).data;
+  const { db: supabase, user, admin: adminUser } = await getAdminContext();
+  if (!user) redirect(`/admin/login?next=${encodeURIComponent(current ? `/admin/${current}` : "/admin")}`);
   if (!adminUser) redirect("/admin/login?error=not_authorized");
 
-  const [categoryResult, productResult, postResult, contactResult] = await Promise.all([
-    supabase.from("categories").select("id, slug, name, description, sort_order, is_active").eq("is_active", true).order("sort_order"),
-    supabase.from("products").select("id, slug, category_id, name, display_name, standard_name, description, story, image_path, requirements, content_status, order_status, sort_order, is_featured").order("sort_order"),
+  const [categoryResult, productResult, postResult, contactResult, settingResult] = await Promise.all([
+    supabase.from("categories").select("id, slug, name, description, sort_order, is_active").order("sort_order"),
+    supabase.from("products").select("id, slug, category_id, name, display_name, standard_name, short_description, description, story, image_path, requirements, content_status, order_status, sort_order, is_featured, base_price, compare_price, preparation_time_days, minimum_order, serving_size, storage_instruction, allergen_info, is_archived, product_variants(id,product_id,name,sku,price,compare_price,preparation_time_days,minimum_order,serving_size,stock_quantity,is_active,sort_order)").order("sort_order"),
     supabase.from("posts").select("id, slug, title, excerpt, content, cover_image_path, status, seo_title, seo_description, author_email, published_at, created_at, updated_at").order("updated_at", { ascending: false }),
     supabase.from("contact_submissions").select("id, name, email, phone, subject, message, status, source, internal_note, created_at, updated_at").order("created_at", { ascending: false }),
+    supabase.from("site_settings").select("key,value").in("key", ["contact", "order", "delivery"]),
   ]);
-  if (categoryResult.error || productResult.error || postResult.error || contactResult.error) throw new Error("Không thể tải dữ liệu quản trị từ Supabase.");
+  if (categoryResult.error || productResult.error || postResult.error || contactResult.error || settingResult.error) throw new Error("Không thể tải dữ liệu quản trị từ Supabase.");
 
   const categories = (categoryResult.data ?? []) as AdminCategory[];
   const products = (productResult.data ?? []) as AdminProduct[];
   const posts = (postResult.data ?? []) as PostRecord[];
   const contacts = (contactResult.data ?? []) as ContactRecord[];
+  const settingValues = Object.fromEntries((settingResult.data ?? []).map(row => [row.key, row.value as Record<string, unknown>]));
+  const adminSettings = { contact: { ...mynoraSiteSettings.contact, ...(settingValues.contact ?? {}) }, order: { ...mynoraSiteSettings.order, ...(settingValues.order ?? {}) }, delivery: { ...mynoraSiteSettings.delivery, ...(settingValues.delivery ?? {}) } } as OperationsSettings;
   const active = sections.find((item) => item.slug === current) ?? sections[0];
   const raw = await searchParams;
   const value = (key: string) => typeof raw[key] === "string" ? raw[key] as string : "";
@@ -132,8 +121,8 @@ export default async function Admin({
   const content = current === "yeu-cau-dat-banh" ? <OrderRequests initialOrders={preparedOrders} total={orderCount} page={page} filters={filters} newCount={newCountResult.count ?? 0} /> : current === "san-pham" ? <ProductManager initialProducts={products} categories={categories} editable />
     : current === "bai-viet" ? <PostManager initialPosts={posts} editable adminEmail={adminUser.email} />
     : current === "lien-he" ? <ContactManager initialContacts={contacts} editable />
-    : current === "danh-muc" ? <Categories categories={categories} products={products} />
-    : current === "van-hanh" ? <Operations />
+    : current === "danh-muc" ? <CategoryManager initialCategories={categories} />
+    : current === "van-hanh" ? <OperationsManager initialSettings={adminSettings} />
     : current === "noi-dung" ? <Content />
     : <Overview products={products} categories={categories} posts={posts} contacts={contacts} newOrdersToday={newTodayResult.count ?? 0} openOrders={openResult.count ?? 0} />;
 
