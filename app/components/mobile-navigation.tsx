@@ -21,7 +21,7 @@ export function MobileNavigation({ id, onClose }: { id: string; onClose: () => v
     };
   }, []);
 
-  return <dialog ref={dialogRef} id={id} className={styles.drawer} aria-label="Menu di động" onCancel={onClose} onClick={event => {
+  return <dialog ref={dialogRef} id={id} className={styles.drawer} style={{ backgroundColor: "#FFFDF8" }} aria-label="Menu di động" onCancel={onClose} onClick={event => {
     if (event.target !== event.currentTarget) return;
     const box = event.currentTarget.getBoundingClientRect();
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose();
