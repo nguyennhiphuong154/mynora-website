@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { guides, type CatalogProduct } from "../lib/site-data";
+import { guides, type CatalogProduct, type PublicGuidePage } from "../lib/site-data";
 import { getPublicSiteSettings } from "../lib/catalog";
 import { CatalogCards } from "./catalog-cards";
 import { StoreNavigation } from "./store-navigation";
@@ -29,6 +29,9 @@ export function ProductGrid({ items }: { items: readonly CatalogProduct[] }) {
   return <CatalogCards items={items} />;
 }
 
-export function InfoCards() { return <div className="content-card-grid">{guides.map(([href, title, text]) => <Link className="content-card" key={href} href={href}><h2>{title}</h2><p>{text}</p><span>Khám phá <i aria-hidden="true">↗</i></span></Link>)}</div>; }
+export function InfoCards({ items }: { items?: readonly PublicGuidePage[] }) {
+  const cards = items?.map(item => ({ href: `/${item.slug}`, title: item.cardTitle, text: item.cardDescription })) ?? guides.map(([href, title, text]) => ({ href, title, text }));
+  return <div className="content-card-grid">{cards.map(card => <Link className="content-card" key={card.href} href={card.href}><h2>{card.title}</h2><p>{card.text}</p><span>Khám phá <i aria-hidden="true">↗</i></span></Link>)}</div>;
+}
 
 export function DraftNotice({ children }: { children: React.ReactNode }) { return <aside className="store-notice" role="status"><p>MYNORA đang chuẩn bị thông tin</p><div>{children}</div></aside>; }

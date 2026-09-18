@@ -92,6 +92,26 @@ export const guides = [
   ["/cau-hoi-thuong-gap", "Câu hỏi thường gặp", "Những câu trả lời nhanh trước khi đặt bánh."],
 ] as const;
 
+export type PublicFaqItem = { id: string; question: string; answer: string; isActive: boolean; sortOrder: number };
+export type PublicGuideCheck = { id: string; label: string; value: string };
+export type PublicGuidePage = { slug: string; eyebrow: string; title: string; intro: string; cardTitle: string; cardDescription: string; sectionTitle: string; checks: PublicGuideCheck[]; extraNote: string };
+export type PublicContentSettings = { faq: { items: PublicFaqItem[] }; guides: { pages: PublicGuidePage[] } };
+
+/** Safe local fallback used only when public content cannot be read from Supabase. */
+export const mynoraPublicContent: PublicContentSettings = {
+  faq: {
+    items: publicOrderFaqs.map((item, index) => ({ id: `faq-${index + 1}`, ...item, isActive: true, sortOrder: index + 1 })),
+  },
+  guides: {
+    pages: [
+      { slug: "huong-dan-dat-banh", eyebrow: "HƯỚNG DẪN", title: "Đặt bánh cùng MYNORA", intro: mynoraOperationalCopy.preorder, cardTitle: "Cách đặt bánh", cardDescription: "Gửi yêu cầu trước ít nhất 5 ngày và nhận xác nhận từ MYNORA.", sectionTitle: "Trước khi gửi yêu cầu.", checks: [{ id: "preorder-1", label: "Đặt trước", value: "Ít nhất 5 ngày" }, { id: "preorder-2", label: "Đơn gấp", value: "MYNORA chưa nhận đơn trong ngày" }, { id: "preorder-3", label: "Xác nhận", value: "Qua điện thoại hoặc Facebook" }, { id: "preorder-4", label: "Khung giờ nhận", value: "Thông báo trước 2 ngày" }], extraNote: "" },
+      { slug: "giao-hang-va-nhan-banh", eyebrow: "GIAO HÀNG", title: "Giao hàng & nhận bánh", intro: mynoraOperationalCopy.delivery, cardTitle: "Giao hàng & nhận bánh", cardDescription: "Thông tin giao tận nơi tại Đà Nẵng và khung giờ nhận bánh.", sectionTitle: "Trước khi gửi yêu cầu.", checks: [{ id: "delivery-1", label: "Khu vực phục vụ", value: "Đà Nẵng" }, { id: "delivery-2", label: "Trong phạm vi tối đa 5 km", value: "Miễn phí giao hàng" }, { id: "delivery-3", label: "Trên 5 km", value: "10.000đ, xác nhận khi chốt đơn" }, { id: "delivery-4", label: "Khung giờ", value: "Khách chọn khung giờ, MYNORA xác nhận thời điểm cụ thể" }], extraNote: mynoraOperationalCopy.issue },
+      { slug: "bao-quan-banh", eyebrow: "HƯỚNG DẪN", title: "Bảo quản bánh", intro: mynoraOperationalCopy.storage, cardTitle: "Bảo quản bánh", cardDescription: "Bảo quản trong ngăn mát và dùng sớm sau khi nhận.", sectionTitle: "Trước khi gửi yêu cầu.", checks: [{ id: "storage-1", label: "Bảo quản chung", value: "Ngăn mát tủ lạnh" }, { id: "storage-2", label: "Thưởng thức", value: "Dùng sớm sau khi nhận" }, { id: "storage-3", label: "Hạn dùng", value: "MYNORA sẽ bổ sung theo từng món" }, { id: "storage-4", label: "Lưu ý", value: "Kiểm tra hướng dẫn riêng khi sản phẩm được hoàn thiện" }], extraNote: "" },
+      { slug: "cau-hoi-thuong-gap", eyebrow: "HỖ TRỢ", title: "Câu hỏi thường gặp", intro: "Những thông tin MYNORA đã xác nhận trước khi bạn gửi yêu cầu đặt bánh.", cardTitle: "Câu hỏi thường gặp", cardDescription: "Những câu trả lời nhanh trước khi đặt bánh.", sectionTitle: "", checks: [], extraNote: "" },
+    ],
+  },
+};
+
 export const policies = ["dat-hang", "giao-hang", "doi-huy-hoan-tien", "quyen-rieng-tu", "dieu-khoan-su-dung"] as const;
 
 export const orderStatusLabels = { available: "Nhận yêu cầu đặt bánh", coming_soon: "Chưa mở bán", paused: "Tạm ngừng nhận", sold_out: "Tạm hết bánh" };

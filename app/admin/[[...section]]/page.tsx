@@ -1,13 +1,15 @@
 import OrderRequests, { type OrderFilters, type OrderRecord, type OrderStatus } from "./order-requests";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { mynoraSiteSettings, publicOrderFaqs } from "../../data/site-data";
+import { mynoraSiteSettings } from "../../data/site-data";
+import { normalizePublicContent } from "../../lib/content";
 import { getAdminContext } from "../../../lib/supabase/admin";
 import ProductManager, { type ProductRecord } from "./product-manager";
 import CategoryManager, { type CategoryRecord } from "./category-manager";
 import PostManager, { type PostRecord } from "./post-manager";
 import ContactManager, { type ContactRecord } from "./contact-manager";
 import OperationsManager, { type OperationsSettings } from "./operations-manager";
+import ContentManager from "./content-manager";
 import styles from "./admin.module.css";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +51,6 @@ function Overview({ products, categories, posts, contacts, newOrdersToday, openO
   </>;
 }
 
-function Content() {
-  return <section className={styles.panel}><div className={styles.panelHeading}><div><p>NỘI DUNG</p><h2>{publicOrderFaqs.length} câu hỏi thường gặp</h2></div></div><div className={styles.faqList}>{publicOrderFaqs.map((faq, index) => <article key={faq.question}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{faq.question}</h3><p>{faq.answer}</p></div></article>)}</div></section>;
-}
-
 export default async function Admin({
   params, searchParams,
 }: {
@@ -70,7 +68,7 @@ export default async function Admin({
     supabase.from("products").select("id, slug, category_id, name, display_name, standard_name, short_description, description, story, image_path, requirements, content_status, order_status, sort_order, is_featured, base_price, compare_price, preparation_time_days, minimum_order, serving_size, storage_instruction, allergen_info, is_archived, product_variants(id,product_id,name,sku,price,compare_price,preparation_time_days,minimum_order,serving_size,stock_quantity,is_active,sort_order)").order("sort_order"),
     supabase.from("posts").select("id, slug, title, excerpt, content, cover_image_path, status, seo_title, seo_description, author_email, published_at, created_at, updated_at").order("updated_at", { ascending: false }),
     supabase.from("contact_submissions").select("id, name, email, phone, subject, message, status, source, internal_note, created_at, updated_at").order("created_at", { ascending: false }),
-    supabase.from("site_settings").select("key,value").in("key", ["contact", "order", "delivery"]),
+    supabase.from("site_settings").select("key,value").in("key", ["contact", "order", "delivery", "content"]),
   ]);
   if (categoryResult.error || productResult.error || postResult.error || contactResult.error || settingResult.error) throw new Error("Không thể tải dữ liệu quản trị từ Supabase.");
 
@@ -80,6 +78,7 @@ export default async function Admin({
   const contacts = (contactResult.data ?? []) as ContactRecord[];
   const settingValues = Object.fromEntries((settingResult.data ?? []).map(row => [row.key, row.value as Record<string, unknown>]));
   const adminSettings = { contact: { ...mynoraSiteSettings.contact, ...(settingValues.contact ?? {}) }, order: { ...mynoraSiteSettings.order, ...(settingValues.order ?? {}) }, delivery: { ...mynoraSiteSettings.delivery, ...(settingValues.delivery ?? {}) } } as OperationsSettings;
+  const publicContent = normalizePublicContent(settingValues.content);
   const active = sections.find((item) => item.slug === current) ?? sections[0];
   const raw = await searchParams;
   const value = (key: string) => typeof raw[key] === "string" ? raw[key] as string : "";
@@ -123,7 +122,7 @@ export default async function Admin({
     : current === "lien-he" ? <ContactManager initialContacts={contacts} editable />
     : current === "danh-muc" ? <CategoryManager initialCategories={categories} />
     : current === "van-hanh" ? <OperationsManager initialSettings={adminSettings} />
-    : current === "noi-dung" ? <Content />
+    : current === "noi-dung" ? <ContentManager initialContent={publicContent} />
     : <Overview products={products} categories={categories} posts={posts} contacts={contacts} newOrdersToday={newTodayResult.count ?? 0} openOrders={openResult.count ?? 0} />;
 
   return <main className={styles.shell}>
