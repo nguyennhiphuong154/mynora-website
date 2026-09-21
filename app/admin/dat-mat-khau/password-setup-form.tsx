@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { getSupabaseConfig } from "../../../lib/supabase/config";
+import { createClient } from "../../../lib/supabase/client";
 import styles from "../login/login.module.css";
 
 export default function PasswordSetupForm() {
@@ -15,9 +16,12 @@ export default function PasswordSetupForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const token = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const token = hash.get("token") ?? "";
+    const accessToken = hash.get("access_token") ?? "";
+    const refreshToken = hash.get("refresh_token") ?? "";
 
-    if (!token) {
+    if (!token && (!accessToken || !refreshToken)) {
       setMessage("Liên kết đặt mật khẩu không hợp lệ.");
       return;
     }
@@ -32,25 +36,42 @@ export default function PasswordSetupForm() {
 
     setPending(true);
     try {
-      const { supabaseUrl, supabasePublishableKey } = getSupabaseConfig();
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/mynora-set-admin-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: supabasePublishableKey,
+      if (accessToken && refreshToken) {
+        const supabase = createClient();
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          setMessage("Liên kết đã hết hạn hoặc đã được sử dụng.");
+          return;
+        }
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) {
+          setMessage("Chưa thể cập nhật mật khẩu. Vui lòng thử lại.");
+          return;
+        }
+        await supabase.auth.signOut({ scope: "local" });
+      } else {
+        const { supabaseUrl, supabasePublishableKey } = getSupabaseConfig();
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/mynora-set-admin-password`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: supabasePublishableKey,
+            },
+            body: JSON.stringify({ token, password }),
           },
-          body: JSON.stringify({ token, password }),
-        },
-      );
-      const result = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-
-      if (!response.ok) {
-        setMessage(result.error ?? "Chưa thể đặt mật khẩu. Vui lòng thử lại.");
-        return;
+        );
+        const result = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!response.ok) {
+          setMessage(result.error ?? "Chưa thể đặt mật khẩu. Vui lòng thử lại.");
+          return;
+        }
       }
 
       window.history.replaceState(null, "", window.location.pathname);
