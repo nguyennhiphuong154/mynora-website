@@ -4,6 +4,7 @@ import test from "node:test";
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../supabase/migrations/20260921100000_owner_technical_admin_rbac.sql");
+const ownerEmailCorrection = read("../supabase/migrations/20260921120000_correct_owner_email.sql");
 const admin = read("../lib/supabase/admin.ts");
 const api = read("../app/api/admin/users/route.ts");
 const page = read("../app/admin/[[...section]]/page.tsx");
@@ -34,4 +35,11 @@ test("admin UI identifies each role and protects the business email", () => {
   assert.match(page, /Admin kỹ thuật/);
   assert.match(migration, /site_settings_protect_business_email/);
   assert.match(migration, /Only the Owner can change the business email/);
+});
+
+test("owner email correction keeps the bakery address as owner", () => {
+  assert.match(ownerEmailCorrection, /mynorabakery@gmail\.com/);
+  assert.match(ownerEmailCorrection, /set role = 'owner'/);
+  assert.match(ownerEmailCorrection, /is_active = true/);
+  assert.doesNotMatch(ownerEmailCorrection, /delete from|truncate|drop table/i);
 });
