@@ -3,13 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { mynoraSiteSettings } from "../../data/site-data";
 import { normalizePublicContent } from "../../lib/content";
-import { getAdminContext } from "../../../lib/supabase/admin";
+import { getAdminContext, isOwner, type AdminUser } from "../../../lib/supabase/admin";
 import ProductManager, { type ProductRecord } from "./product-manager";
 import CategoryManager, { type CategoryRecord } from "./category-manager";
 import PostManager, { type PostRecord } from "./post-manager";
 import ContactManager, { type ContactRecord } from "./contact-manager";
 import OperationsManager, { type OperationsSettings } from "./operations-manager";
 import ContentManager from "./content-manager";
+import AdminUsersManager from "./admin-users-manager";
 import styles from "./admin.module.css";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ const sections = [
   { slug: "danh-muc", label: "Danh mục", note: "Nhóm sản phẩm công khai" },
   { slug: "van-hanh", label: "Vận hành", note: "Đặt trước, giao hàng và liên hệ" },
   { slug: "noi-dung", label: "Nội dung", note: "FAQ và nội dung hướng dẫn" },
+  { slug: "quan-tri-vien", label: "Quản trị viên", note: "Tài khoản và phân quyền" },
 ] as const;
 
 function Overview({ products, categories, posts, contacts, newOrdersToday, openOrders }: { products: AdminProduct[]; categories: AdminCategory[]; posts: PostRecord[]; contacts: ContactRecord[]; newOrdersToday: number; openOrders: number }) {
@@ -63,14 +65,15 @@ export default async function Admin({
   if (!user) redirect(`/admin/login?next=${encodeURIComponent(current ? `/admin/${current}` : "/admin")}`);
   if (!adminUser) redirect("/admin/login?error=not_authorized");
 
-  const [categoryResult, productResult, postResult, contactResult, settingResult] = await Promise.all([
+  const [categoryResult, productResult, postResult, contactResult, settingResult, adminsResult] = await Promise.all([
     supabase.from("categories").select("id, slug, name, description, sort_order, is_active").order("sort_order"),
     supabase.from("products").select("id, slug, category_id, name, display_name, standard_name, short_description, description, story, image_path, requirements, content_status, order_status, sort_order, is_featured, base_price, compare_price, preparation_time_days, minimum_order, serving_size, storage_instruction, allergen_info, is_archived, product_variants(id,product_id,name,sku,price,compare_price,preparation_time_days,minimum_order,serving_size,stock_quantity,is_active,sort_order)").order("sort_order"),
     supabase.from("posts").select("id, slug, title, excerpt, content, cover_image_path, status, seo_title, seo_description, author_email, published_at, created_at, updated_at").order("updated_at", { ascending: false }),
     supabase.from("contact_submissions").select("id, name, email, phone, subject, message, status, source, internal_note, created_at, updated_at").order("created_at", { ascending: false }),
     supabase.from("site_settings").select("key,value").in("key", ["contact", "order", "delivery", "content"]),
+    supabase.from("admin_users").select("id,email,display_name,is_active,role").order("role").order("email"),
   ]);
-  if (categoryResult.error || productResult.error || postResult.error || contactResult.error || settingResult.error) throw new Error("Không thể tải dữ liệu quản trị từ Supabase.");
+  if (categoryResult.error || productResult.error || postResult.error || contactResult.error || settingResult.error || adminsResult.error) throw new Error("Không thể tải dữ liệu quản trị từ Supabase.");
 
   const categories = (categoryResult.data ?? []) as AdminCategory[];
   const products = (productResult.data ?? []) as AdminProduct[];
@@ -79,6 +82,7 @@ export default async function Admin({
   const settingValues = Object.fromEntries((settingResult.data ?? []).map(row => [row.key, row.value as Record<string, unknown>]));
   const adminSettings = { contact: { ...mynoraSiteSettings.contact, ...(settingValues.contact ?? {}) }, order: { ...mynoraSiteSettings.order, ...(settingValues.order ?? {}) }, delivery: { ...mynoraSiteSettings.delivery, ...(settingValues.delivery ?? {}) } } as OperationsSettings;
   const publicContent = normalizePublicContent(settingValues.content);
+  const admins = (adminsResult.data ?? []) as AdminUser[];
   const active = sections.find((item) => item.slug === current) ?? sections[0];
   const raw = await searchParams;
   const value = (key: string) => typeof raw[key] === "string" ? raw[key] as string : "";
@@ -121,15 +125,16 @@ export default async function Admin({
     : current === "bai-viet" ? <PostManager initialPosts={posts} editable adminEmail={adminUser.email} />
     : current === "lien-he" ? <ContactManager initialContacts={contacts} editable />
     : current === "danh-muc" ? <CategoryManager initialCategories={categories} />
-    : current === "van-hanh" ? <OperationsManager initialSettings={adminSettings} />
+    : current === "van-hanh" ? <OperationsManager initialSettings={adminSettings} canEditBusinessEmail={isOwner(adminUser)} />
     : current === "noi-dung" ? <ContentManager initialContent={publicContent} />
+    : current === "quan-tri-vien" ? <AdminUsersManager admins={admins} canManage={isOwner(adminUser)} />
     : <Overview products={products} categories={categories} posts={posts} contacts={contacts} newOrdersToday={newTodayResult.count ?? 0} openOrders={openResult.count ?? 0} />;
 
   return <main className={styles.shell}>
     <aside className={styles.sidebar}>
       <Link className={styles.brand} href="/admin"><span>MYNORA</span><small>ADMIN</small></Link>
       <nav>{sections.map((item) => <Link className={item.slug === current ? styles.active : ""} key={item.slug || "overview"} href={item.slug ? `/admin/${item.slug}` : "/admin"}><strong>{item.label}{item.slug === "yeu-cau-dat-banh" && (newCountResult.count ?? 0) > 0 ? <span className={styles.navBadge}>{newCountResult.count}</span> : null}</strong><small>{item.note}</small></Link>)}</nav>
-      <div className={styles.account}><small>{adminUser.display_name ?? "Quản trị viên"}</small><span>{adminUser.email}</span><form action="/admin/signout" method="post"><button className={styles.signoutButton} type="submit">Đăng xuất</button></form></div>
+      <div className={styles.account}><strong>MYNORA</strong><small>{adminUser.display_name ?? "Quản trị viên"}</small><span>{adminUser.email}</span><em>{adminUser.role === "owner" ? "Chủ sở hữu" : "Admin kỹ thuật"}</em><form action="/admin/signout" method="post"><button className={styles.signoutButton} type="submit">Đăng xuất</button></form></div>
     </aside>
     <section className={styles.workspace}><header><div><p>MYNORA / {active.label.toUpperCase()}</p><h1>{active.label}</h1></div><div className={styles.readOnly}><span>●</span> Supabase đã kết nối</div></header>{content}</section>
   </main>;
